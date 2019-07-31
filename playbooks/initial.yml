@@ -1,0 +1,16 @@
+- hosts: all
+  become: yes
+  tasks:
+    - name: create the 'devopsuser' user
+      user: name=devopsuser append=yes state=present createhome=yes shell=/bin/bash
+
+    - name: allow 'devopsuser' to have passwordless sudo
+      lineinfile:
+        dest: /etc/sudoers
+        line: 'devopsuser ALL=(ALL) NOPASSWD: ALL'
+        validate: 'visudo -cf %s'
+
+    - name: set up authorized keys for the rhel user
+      authorized_key: user=devopsuser key="{{item}}"
+      with_file:
+        - ~/.ssh/id_rsa.pub
