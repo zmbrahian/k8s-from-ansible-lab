@@ -11,7 +11,7 @@ Vagrant.configure("2") do |config|
             subconfig.vm.provider "virtualbox" do |v|
                 v.name = "rhel8-k8s0#{i}"
                 v.memory = 2048
-                v.cpus = 1
+                v.cpus = 2
                 v.customize ["storageattach", "rhel8-k8s0#{i}", "--storagectl", "IDE Controller", "--port", "1", "--device", "1", "--type", "dvddrive", "--medium", "D:\\ISOs\\rhel-8.0-x86_64-dvd.iso"]
                 end
             subconfig.vm.provision "file", source: "repo/media.repo", destination: "/tmp/"
@@ -39,16 +39,18 @@ Vagrant.configure("2") do |config|
         subconfig.vm.provider "virtualbox" do |v|
             v.name = "rhel8-k8s01"
             v.memory = 2048
-            v.cpus = 1
+            v.cpus = 2
             v.customize ["storageattach", "rhel8-k8s01", "--storagectl", "IDE Controller", "--port", "1", "--device", "1", "--type", "dvddrive", "--medium", "D:\\ISOs\\rhel-8.0-x86_64-dvd.iso"]
             end
         subconfig.vm.provision "file", source: "repo/media.repo", destination: "/tmp/"
         subconfig.vm.provision "file", source: "playbooks/initial.yml", destination: "/tmp/"
         subconfig.vm.provision "file", source: "playbooks/master.yml", destination: "/tmp/"
         subconfig.vm.provision "file", source: "playbooks/workers.yml", destination: "/tmp/"
+        subconfig.vm.provision "file", source: "playbooks/kube-dependencies.yml", destination: "/tmp/"
         subconfig.vm.provision "file", source: "keys/id_rsa.pub", destination: "/tmp/"
         subconfig.vm.provision "file", source: "keys/id_rsa", destination: "/tmp/"
         subconfig.vm.provision "file", source: "inventory/hosts", destination: "/tmp/"
+        subconfig.vm.provision "file", source: "daemon.json", destination: "/tmp/"
         subconfig.vm.provision "shell", inline: <<-SHELL
             sudo cp /tmp/media.repo /etc/yum.repos.d/
             sudo mount /dev/sr0 /mnt
@@ -68,6 +70,10 @@ Vagrant.configure("2") do |config|
             sudo ssh-keyscan -H 192.168.1.23 >> ~/.ssh/known_hosts
             sudo cat /tmp/id_rsa.pub >> ~/.ssh/authorized_keys ; mv /tmp/id_rsa* ~/.ssh/ ; chown root:root ~/.ssh/id_rsa* ; chmod 600 ~/.ssh/id_rsa
             sudo ansible -m ping -i ~/inventory/hosts all
-        SHELL
+            sudo ansible-playbook ~/playbooks/kube-dependencies.yml -i ~/inventory/hosts
+            sudo ansible-playbook ~/playbooks/initial.yml -i ~/inventory/hosts
+            sudo ansible-playbook ~/playbooks/master.yml -i ~/inventory/hosts
+            sudo ansible-playbook ~/playbooks/workers.yml -i ~/inventory/hosts
+            SHELL
     end
 end
